@@ -32,16 +32,21 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
     if (!session?.user?.id) return;
 
     setLoading(true);
-    const { data, error } = await supabase
-      .from("wardrobe_items")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("wardrobe_items")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setItems(data);
+      if (!error && data) {
+        setItems(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch wardrobe items (Supabase may not be configured):", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -112,25 +117,27 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
       </div>
 
       {filteredItems.length === 0 ? (
-        <div className="py-12 text-center">
-          <svg
-            className="mx-auto h-16 w-16 text-gray-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-            />
-          </svg>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
-            No items yet
+        <div className="py-20 text-center">
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-50">
+            <svg
+              className="h-12 w-12 text-gray-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">
+            Your closet is calling — but it's empty
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Upload your first dress to get started
+          <p className="mx-auto mt-2 max-w-sm text-sm text-gray-500 leading-relaxed">
+            Start building your collection by adding your first piece. Once it's here, the outfit magic begins.
           </p>
         </div>
       ) : (
@@ -142,6 +149,18 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
                   src={item.image_url}
                   alt={item.name}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'h-full w-full flex items-center justify-center';
+                      fallback.style.backgroundColor = '#f3f4f6';
+                      fallback.innerHTML = `<svg class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
                 <button
                   onClick={() => handleDelete(item.id, item.image_url)}

@@ -72,9 +72,13 @@ export default function CombinationsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchItems = async () => {
-    const { data } = await supabase
-      .from("wardrobe_items").select("*").eq("user_id", session?.user?.id).order("created_at", { ascending: false });
-    if (data) setItems(data);
+    try {
+      const { data } = await supabase
+        .from("wardrobe_items").select("*").eq("user_id", session?.user?.id).order("created_at", { ascending: false });
+      if (data) setItems(data);
+    } catch {
+      // Supabase not configured
+    }
     setLoading(false);
   };
 
@@ -133,10 +137,16 @@ export default function CombinationsPage() {
         </div>
 
         {items.length === 0 && (
-          <div className="py-12 text-center bg-gray-50 rounded-2xl">
-            <p className="text-gray-500">Add items to your wardrobe first</p>
-            <Link href="/dashboard/wardrobe" className="mt-4 inline-block rounded-full bg-black px-6 py-2 text-sm font-medium text-white hover:bg-gray-800">
-              Go to Wardrobe
+          <div className="py-16 text-center bg-gray-50 rounded-2xl">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800">No wardrobe items yet</p>
+            <p className="mt-1 text-sm text-gray-500">Add clothes to your wardrobe and we'll create stunning outfit combos for you.</p>
+            <Link href="/dashboard/wardrobe" className="mt-5 inline-block rounded-full bg-black px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 transition-colors">
+              Build Your Wardrobe
             </Link>
           </div>
         )}
@@ -167,8 +177,15 @@ export default function CombinationsPage() {
         )}
 
         {combinations.length === 0 && items.length > 0 && (
-          <div className="py-12 text-center bg-gray-50 rounded-2xl">
-            <p className="text-gray-500">Click &quot;Generate Combinations&quot; to see outfit ideas</p>
+          <div className="py-16 text-center bg-gray-50 rounded-2xl">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-gray-800">Ready to style your look?</p>
+            <p className="mt-1 text-sm text-gray-500">Hit the button above to generate outfit ideas based on your wardrobe pieces.</p>
           </div>
         )}
       </main>

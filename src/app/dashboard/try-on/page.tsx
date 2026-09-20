@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { removeBackground } from "@/lib/bg-remove";
 
 interface WardrobeItem {
   id: string;
@@ -31,6 +32,7 @@ export default function TryOnPage() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [uploadingDress, setUploadingDress] = useState(false);
+  const [processingBg, setProcessingBg] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -40,24 +42,39 @@ export default function TryOnPage() {
   }, [status, router]);
 
   async function fetchWardrobe() {
-    const { data, error } = await supabase
-      .from("wardrobe_items")
-      .select("*")
-      .eq("user_email", session?.user?.email)
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("wardrobe_items")
+        .select("*")
+        .eq("user_id", session?.user?.id)
+        .order("created_at", { ascending: false });
 
-    if (!error && data) setWardrobe(data as WardrobeItem[]);
+      if (!error && data) setWardrobe(data as WardrobeItem[]);
+    } catch {
+      // Supabase not configured
+    }
   }
 
   useEffect(() => {
     if (session?.user?.email) fetchWardrobe();
   }, [session]);
 
-  function handleUploadUserPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUploadUserPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => setUserPhoto(ev.target?.result as string);
+    reader.onload = async (ev) => {
+      const result = ev.target?.result as string;
+      setUserPhoto(result);
+      setProcessingBg(true);
+      try {
+        const processed = await removeBackground(result, 40);
+        setUserPhoto(processed);
+      } catch {
+        setUserPhoto(result);
+      }
+      setProcessingBg(false);
+    };
     reader.readAsDataURL(file);
   }
 
@@ -67,13 +84,20 @@ export default function TryOnPage() {
     setUploadingDress(true);
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
+      const rawUrl = ev.target?.result as string;
+      let processedUrl = rawUrl;
+      try {
+        processedUrl = await removeBackground(rawUrl, 35);
+      } catch {
+        processedUrl = rawUrl;
+      }
       const tempItem: WardrobeItem = {
         id: `temp-${Date.now()}`,
         name: file.name.replace(/\.[^.]+$/, ""),
         category: "Uploaded",
         color: "#888888",
-        image_url: ev.target?.result as string,
+        image_url: processedUrl,
       };
       setWardrobe((prev) => [tempItem, ...prev]);
       setUploadingDress(false);
@@ -193,7 +217,7 @@ export default function TryOnPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                Upload Your Photo
+                {processingBg ? "Removing background..." : "Upload Your Photo"}
                 <input type="file" accept="image/*" className="hidden" onChange={handleUploadUserPhoto} />
               </label>
 
@@ -201,7 +225,7 @@ export default function TryOnPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                {uploadingDress ? "Uploading..." : "Upload New Dress"}
+                {uploadingDress ? "Removing background..." : "Upload New Dress"}
                 <input type="file" accept="image/*" className="hidden" onChange={handleUploadDress} disabled={uploadingDress} />
               </label>
 
