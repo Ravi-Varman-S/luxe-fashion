@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { removeBackground } from "@/lib/bg-remove";
+import { removeBackground, removeBackgroundForDress } from "@/lib/bg-remove";
 
 interface WardrobeItem {
   id: string;
@@ -68,7 +68,7 @@ export default function TryOnPage() {
       setUserPhoto(result);
       setProcessingBg(true);
       try {
-        const processed = await removeBackground(result, 40);
+        const processed = await removeBackground(result);
         setUserPhoto(processed);
       } catch {
         setUserPhoto(result);
@@ -88,7 +88,7 @@ export default function TryOnPage() {
       const rawUrl = ev.target?.result as string;
       let processedUrl = rawUrl;
       try {
-        processedUrl = await removeBackground(rawUrl, 35);
+        processedUrl = await removeBackgroundForDress(rawUrl);
       } catch {
         processedUrl = rawUrl;
       }
