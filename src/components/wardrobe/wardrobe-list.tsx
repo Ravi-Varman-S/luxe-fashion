@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { supabase } from "@/lib/supabase";
+import { getAllItems, deleteItem } from "@/lib/wardrobe-db";
 
 interface WardrobeItem {
   id: string;
@@ -56,12 +57,16 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
           setItems(data);
         }
       } else {
-        const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
+        const localItems = await getAllItems();
         setItems(localItems);
       }
     } catch {
-      const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-      setItems(localItems);
+      try {
+        const localItems = await getAllItems();
+        setItems(localItems);
+      } catch {
+        // ignore
+      }
     }
     setLoading(false);
   };
@@ -87,11 +92,7 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
           await supabase.storage.from("wardrobe-images").remove([fileName]);
         }
       } else {
-        const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-        localStorage.setItem(
-          "luxe_wardrobe",
-          JSON.stringify(localItems.filter((i: WardrobeItem) => i.id !== id))
-        );
+        await deleteItem(id);
       }
 
       setItems(items.filter((item) => item.id !== id));

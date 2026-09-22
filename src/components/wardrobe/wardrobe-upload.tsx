@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { supabase } from "@/lib/supabase";
+import { saveItem, compressImage } from "@/lib/wardrobe-db";
 
 const CATEGORIES = [
   { value: "top", label: "Top" },
@@ -84,17 +85,16 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
 
         if (dbError) throw dbError;
       } else {
-        const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-        localItems.unshift({
+        const compressed = await compressImage(preview, 800, 0.8);
+        await saveItem({
           id: `local-${Date.now()}`,
           user_id: userId,
           name: formData.name,
           category: formData.category,
           color: formData.color,
-          image_url: preview,
+          image_url: compressed,
           created_at: new Date().toISOString(),
         });
-        localStorage.setItem("luxe_wardrobe", JSON.stringify(localItems));
       }
 
       setFormData({ name: "", category: "top", color: "Black" });
@@ -102,8 +102,10 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
       if (fileInputRef.current) fileInputRef.current.value = "";
       
       onItemAdded?.();
+      alert("Item added to wardrobe!");
     } catch (error) {
       console.error("Error uploading item:", error);
+      alert("Failed to add item: " + (error as Error).message);
     } finally {
       setIsUploading(false);
     }
