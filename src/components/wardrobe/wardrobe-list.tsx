@@ -29,13 +29,20 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
+  const getUserId = () => {
+    const s = session as Record<string, unknown> | null;
+    const u = s?.user as Record<string, unknown> | undefined;
+    return (u?.id as string) || (u?.sub as string) || "anonymous";
+  };
+
   const isSupabaseConfigured = () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     return url && url !== "your_supabase_project_url" && url.length > 0;
   };
 
   const fetchItems = async () => {
-    if (!session?.user?.id) return;
+    const userId = getUserId();
+    if (!userId || userId === "anonymous") return;
 
     setLoading(true);
     try {
@@ -43,7 +50,7 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
         const { data, error } = await supabase
           .from("wardrobe_items")
           .select("*")
-          .eq("user_id", session.user.id)
+          .eq("user_id", userId)
           .order("created_at", { ascending: false });
 
         if (!error && data) {
@@ -51,13 +58,11 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
         }
       } else {
         const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-        const uid = session?.user?.id;
-      setItems(localItems.filter((i: WardrobeItem) => uid && i.user_id === uid));
+        setItems(localItems.filter((i: WardrobeItem) => i.user_id === userId));
       }
     } catch {
       const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-      const uid = session?.user?.id;
-      setItems(localItems.filter((i: WardrobeItem) => uid && i.user_id === uid));
+      setItems(localItems.filter((i: WardrobeItem) => i.user_id === userId));
     }
     setLoading(false);
   };

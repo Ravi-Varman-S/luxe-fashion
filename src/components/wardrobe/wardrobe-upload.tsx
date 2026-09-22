@@ -45,17 +45,25 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
     return url && url !== "your_supabase_project_url" && url.length > 0;
   };
 
+  const getUserId = () => {
+    const s = session as Record<string, unknown> | null;
+    const u = s?.user as Record<string, unknown> | undefined;
+    return (u?.id as string) || (u?.sub as string) || "anonymous";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session?.user?.id || !preview) return;
+    if (!preview) return;
+    if (!formData.name.trim()) return;
 
+    const userId = getUserId();
     setIsUploading(true);
     try {
       if (isSupabaseConfigured()) {
         const file = fileInputRef.current?.files?.[0];
         if (!file) return;
 
-        const fileName = `${session.user.id}/${Date.now()}-${file.name}`;
+        const fileName = `${userId}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("wardrobe-images")
           .upload(fileName, file);
@@ -67,7 +75,7 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
           .getPublicUrl(fileName);
 
         const { error: dbError } = await supabase.from("wardrobe_items").insert({
-          user_id: session.user.id,
+          user_id: userId,
           name: formData.name,
           category: formData.category,
           color: formData.color,
@@ -79,7 +87,7 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
         const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
         localItems.unshift({
           id: `local-${Date.now()}`,
-          user_id: session.user.id,
+          user_id: userId,
           name: formData.name,
           category: formData.category,
           color: formData.color,
