@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 interface WardrobeItem {
   id: string;
+  user_id: string;
   name: string;
   category: string;
   color: string;
@@ -28,25 +29,37 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
+  const isSupabaseConfigured = () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return url && url !== "your_supabase_project_url" && url.length > 0;
+  };
+
   const fetchItems = async () => {
     if (!session?.user?.id) return;
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("wardrobe_items")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false });
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from("wardrobe_items")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setItems(data);
+        if (!error && data) {
+          setItems(data);
+        }
+      } else {
+        const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
+        const uid = session?.user?.id;
+      setItems(localItems.filter((i: WardrobeItem) => uid && i.user_id === uid));
       }
-    } catch (err) {
-      console.error("Failed to fetch wardrobe items (Supabase may not be configured):", err);
-    } finally {
-      setLoading(false);
+    } catch {
+      const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
+      const uid = session?.user?.id;
+      setItems(localItems.filter((i: WardrobeItem) => uid && i.user_id === uid));
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -57,18 +70,24 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
     if (!confirm("Remove this item from your wardrobe?")) return;
 
     try {
-      // Delete from database
-      const { error } = await supabase
-        .from("wardrobe_items")
-        .delete()
-        .eq("id", id);
+      if (isSupabaseConfigured()) {
+        const { error } = await supabase
+          .from("wardrobe_items")
+          .delete()
+          .eq("id", id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Delete from storage
-      const fileName = imageUrl.split("/").pop();
-      if (fileName) {
-        await supabase.storage.from("wardrobe-images").remove([fileName]);
+        const fileName = imageUrl.split("/").pop();
+        if (fileName) {
+          await supabase.storage.from("wardrobe-images").remove([fileName]);
+        }
+      } else {
+        const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
+        localStorage.setItem(
+          "luxe_wardrobe",
+          JSON.stringify(localItems.filter((i: WardrobeItem) => i.id !== id))
+        );
       }
 
       setItems(items.filter((item) => item.id !== id));

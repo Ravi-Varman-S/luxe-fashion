@@ -40,49 +40,62 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
     }
   };
 
+  const isSupabaseConfigured = () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return url && url !== "your_supabase_project_url" && url.length > 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.user?.id || !preview) return;
 
     setIsUploading(true);
     try {
-      // Upload image to Supabase Storage
-      const file = fileInputRef.current?.files?.[0];
-      if (!file) return;
+      if (isSupabaseConfigured()) {
+        const file = fileInputRef.current?.files?.[0];
+        if (!file) return;
 
-      const fileName = `${session.user.id}/${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("wardrobe-images")
-        .upload(fileName, file);
+        const fileName = `${session.user.id}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("wardrobe-images")
+          .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("wardrobe-images")
-        .getPublicUrl(fileName);
+        const { data: urlData } = supabase.storage
+          .from("wardrobe-images")
+          .getPublicUrl(fileName);
 
-      // Insert item to database
-      const { error: dbError } = await supabase.from("wardrobe_items").insert({
-        user_id: session.user.id,
-        name: formData.name,
-        category: formData.category,
-        color: formData.color,
-        image_url: urlData.publicUrl,
-      });
+        const { error: dbError } = await supabase.from("wardrobe_items").insert({
+          user_id: session.user.id,
+          name: formData.name,
+          category: formData.category,
+          color: formData.color,
+          image_url: urlData.publicUrl,
+        });
 
-      if (dbError) throw dbError;
+        if (dbError) throw dbError;
+      } else {
+        const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
+        localItems.unshift({
+          id: `local-${Date.now()}`,
+          user_id: session.user.id,
+          name: formData.name,
+          category: formData.category,
+          color: formData.color,
+          image_url: preview,
+          created_at: new Date().toISOString(),
+        });
+        localStorage.setItem("luxe_wardrobe", JSON.stringify(localItems));
+      }
 
-      // Reset form
       setFormData({ name: "", category: "top", color: "Black" });
       setPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       
       onItemAdded?.();
-      alert("Item added to wardrobe!");
     } catch (error) {
       console.error("Error uploading item:", error);
-      alert("Failed to upload item. Please try again.");
     } finally {
       setIsUploading(false);
     }
