@@ -82,8 +82,12 @@ export default function TryOnPage() {
         const processed = await removeBackground(result);
         setUserPhoto(processed);
       } catch {
-        setUserPhoto(result);
+        // keep original photo
       }
+      setProcessingBg(false);
+    };
+    reader.onerror = () => {
+      alert("Could not read the selected file. Please try another image.");
       setProcessingBg(false);
     };
     reader.readAsDataURL(file);
