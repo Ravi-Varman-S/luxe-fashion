@@ -42,11 +42,10 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
 
   const fetchItems = async () => {
     const userId = getUserId();
-    if (!userId || userId === "anonymous") return;
 
     setLoading(true);
     try {
-      if (isSupabaseConfigured()) {
+      if (isSupabaseConfigured() && userId && userId !== "anonymous") {
         const { data, error } = await supabase
           .from("wardrobe_items")
           .select("*")
@@ -58,11 +57,11 @@ export default function WardrobeList({ refreshTrigger }: { refreshTrigger?: numb
         }
       } else {
         const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-        setItems(localItems.filter((i: WardrobeItem) => i.user_id === userId));
+        setItems(localItems);
       }
     } catch {
       const localItems = JSON.parse(localStorage.getItem("luxe_wardrobe") || "[]");
-      setItems(localItems.filter((i: WardrobeItem) => i.user_id === userId));
+      setItems(localItems);
     }
     setLoading(false);
   };
