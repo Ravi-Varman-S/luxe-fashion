@@ -80,7 +80,7 @@ export default function Home() {
         <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="mb-4 text-sm font-medium uppercase tracking-widest text-gray-600">
-              New Collection 2024
+              New Collection 2026
             </p>
             <h1 className="mb-6 text-5xl font-bold leading-tight text-black md:text-6xl">
               Elevate Your
@@ -230,7 +230,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 border-t border-gray-100 pt-8 text-center text-sm text-gray-400">
-            © 2024 LUXE. All rights reserved.
+            © 2026 LUXE. All rights reserved.
           </div>
         </div>
       </footer>
