@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { removeBackground, removeBackgroundForDress } from "@/lib/bg-remove";
+import { getAllItems } from "@/lib/wardrobe-db";
 
 interface WardrobeItem {
   id: string;
@@ -49,14 +50,24 @@ export default function TryOnPage() {
         .eq("user_id", session?.user?.id)
         .order("created_at", { ascending: false });
 
-      if (!error && data) setWardrobe(data as WardrobeItem[]);
+      if (!error && data && data.length > 0) {
+        setWardrobe(data as WardrobeItem[]);
+        return;
+      }
     } catch {
-      // Supabase not configured
+      // Supabase not configured, fall through to IndexedDB
+    }
+
+    try {
+      const localItems = await getAllItems();
+      setWardrobe(localItems as WardrobeItem[]);
+    } catch {
+      // ignore
     }
   }
 
   useEffect(() => {
-    if (session?.user?.email) fetchWardrobe();
+    if (session) fetchWardrobe();
   }, [session]);
 
   async function handleUploadUserPhoto(e: React.ChangeEvent<HTMLInputElement>) {
