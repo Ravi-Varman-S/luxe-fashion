@@ -73,6 +73,12 @@ export default function TryOnPage() {
   async function handleUploadUserPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const result = ev.target?.result as string;
@@ -91,6 +97,7 @@ export default function TryOnPage() {
       setProcessingBg(false);
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   async function handleUploadDress(e: React.ChangeEvent<HTMLInputElement>) {

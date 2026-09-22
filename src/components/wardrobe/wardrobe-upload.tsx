@@ -23,6 +23,7 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
   const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [processingBg, setProcessingBg] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -34,8 +35,18 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
+      reader.onloadend = async () => {
+        const raw = reader.result as string;
+        setPreview(raw);
+        setProcessingBg(true);
+        try {
+          const { removeBackgroundForDress } = await import("@/lib/bg-remove");
+          const processed = await removeBackgroundForDress(raw);
+          setPreview(processed);
+        } catch {
+          // keep original
+        }
+        setProcessingBg(false);
       };
       reader.readAsDataURL(file);
     }
@@ -222,10 +233,14 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
       {/* Submit */}
       <button
         type="submit"
-        disabled={isUploading || !preview}
+        disabled={isUploading || processingBg || !preview}
         className="w-full rounded-xl bg-black py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        {isUploading ? "Uploading..." : "Add to Wardrobe"}
+        {processingBg
+          ? "Removing background..."
+          : isUploading
+          ? "Uploading..."
+          : "Add to Wardrobe"}
       </button>
     </form>
   );
