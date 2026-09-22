@@ -25,6 +25,8 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
   const [isUploading, setIsUploading] = useState(false);
   const [processingBg, setProcessingBg] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<string>("image");
+  const [fileInfo, setFileInfo] = useState<{ name: string; size: number } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     category: "top",
@@ -34,19 +36,25 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setFileInfo({ name: file.name, size: file.size });
+      const isImage = file.type.startsWith("image/");
+      setFileType(isImage ? "image" : file.type || "file");
+
       const reader = new FileReader();
       reader.onloadend = async () => {
         const raw = reader.result as string;
         setPreview(raw);
-        setProcessingBg(true);
-        try {
-          const { removeBackgroundForDress } = await import("@/lib/bg-remove");
-          const processed = await removeBackgroundForDress(raw);
-          setPreview(processed);
-        } catch {
-          // keep original
+        if (isImage) {
+          setProcessingBg(true);
+          try {
+            const { removeBackgroundForDress } = await import("@/lib/bg-remove");
+            const processed = await removeBackgroundForDress(raw);
+            setPreview(processed);
+          } catch {
+            // keep original
+          }
+          setProcessingBg(false);
         }
-        setProcessingBg(false);
       };
       reader.readAsDataURL(file);
     }
@@ -96,20 +104,25 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
 
         if (dbError) throw dbError;
       } else {
-        const compressed = await compressImage(preview, 800, 0.8);
+        let storedUrl = preview;
+        if (fileType === "image") {
+          storedUrl = await compressImage(preview, 800, 0.8);
+        }
         await saveItem({
           id: `local-${Date.now()}`,
           user_id: userId,
           name: formData.name,
           category: formData.category,
           color: formData.color,
-          image_url: compressed,
+          image_url: storedUrl,
           created_at: new Date().toISOString(),
         });
       }
 
       setFormData({ name: "", category: "top", color: "Black" });
       setPreview(null);
+      setFileType("image");
+      setFileInfo(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       
       onItemAdded?.();
@@ -127,18 +140,30 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
       {/* Image Upload */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Dress Image
+          Dress File (image, PDF, etc.)
         </label>
         <div
           className="relative flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400 cursor-pointer"
           onClick={() => fileInputRef.current?.click()}
         >
-          {preview ? (
+          {preview && fileType === "image" ? (
             <img
               src={preview}
               alt="Preview"
               className="h-full w-full rounded-2xl object-cover"
             />
+          ) : preview ? (
+            <div className="text-center px-4">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="mt-2 text-sm font-medium text-gray-700 truncate max-w-[200px] mx-auto">
+                {fileInfo?.name}
+              </p>
+              <p className="text-xs text-gray-400">
+                {fileInfo ? `${(fileInfo.size / 1024).toFixed(1)} KB` : ""}
+              </p>
+            </div>
           ) : (
             <div className="text-center">
               <svg
@@ -155,14 +180,13 @@ export default function WardrobeUpload({ onItemAdded }: { onItemAdded?: () => vo
                 />
               </svg>
               <p className="mt-2 text-sm text-gray-500">
-                Click to upload your dress photo
+                Click to upload any file (image, PDF, etc.)
               </p>
             </div>
           )}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
             onChange={handleFileChange}
             className="hidden"
           />

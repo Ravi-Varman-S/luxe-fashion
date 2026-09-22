@@ -74,23 +74,20 @@ export default function TryOnPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      alert("Please select an image file.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const result = ev.target?.result as string;
       setUserPhoto(result);
-      setProcessingBg(true);
-      try {
-        const processed = await removeBackground(result);
-        setUserPhoto(processed);
-      } catch {
-        // keep original photo
+      if (file.type.startsWith("image/")) {
+        setProcessingBg(true);
+        try {
+          const processed = await removeBackground(result);
+          setUserPhoto(processed);
+        } catch {
+          // keep original photo
+        }
+        setProcessingBg(false);
       }
-      setProcessingBg(false);
     };
     reader.onerror = () => {
       alert("Could not read the selected file. Please try another image.");
@@ -109,10 +106,12 @@ export default function TryOnPage() {
     reader.onload = async (ev) => {
       const rawUrl = ev.target?.result as string;
       let processedUrl = rawUrl;
-      try {
-        processedUrl = await removeBackgroundForDress(rawUrl);
-      } catch {
-        processedUrl = rawUrl;
+      if (file.type.startsWith("image/")) {
+        try {
+          processedUrl = await removeBackgroundForDress(rawUrl);
+        } catch {
+          processedUrl = rawUrl;
+        }
       }
       const tempItem: WardrobeItem = {
         id: `temp-${Date.now()}`,
@@ -125,6 +124,7 @@ export default function TryOnPage() {
       setUploadingDress(false);
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   function placeItemOnCanvas(item: WardrobeItem) {
@@ -240,7 +240,7 @@ export default function TryOnPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 {processingBg ? "Removing background..." : "Upload Your Photo"}
-                <input type="file" accept="image/*" className="hidden" onChange={handleUploadUserPhoto} />
+                <input type="file" className="hidden" onChange={handleUploadUserPhoto} />
               </label>
 
               <label className="inline-flex items-center gap-2 border border-black text-black px-5 py-2.5 rounded-full cursor-pointer hover:bg-gray-100 transition-colors text-sm font-medium">
@@ -248,7 +248,7 @@ export default function TryOnPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
                 {uploadingDress ? "Removing background..." : "Upload New Dress"}
-                <input type="file" accept="image/*" className="hidden" onChange={handleUploadDress} disabled={uploadingDress} />
+                <input type="file" className="hidden" onChange={handleUploadDress} disabled={uploadingDress} />
               </label>
 
               {placedItems.length > 0 && (
@@ -276,12 +276,22 @@ export default function TryOnPage() {
             >
               {/* User Photo Background */}
               {userPhoto ? (
-                <img
-                  src={userPhoto}
-                  alt="Your photo"
-                  className="w-full h-full object-contain absolute inset-0"
-                  draggable={false}
-                />
+                userPhoto.startsWith("data:image/") ? (
+                  <img
+                    src={userPhoto}
+                    alt="Your photo"
+                    className="w-full h-full object-contain absolute inset-0"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-lg font-medium">File uploaded</p>
+                    <p className="text-sm">Non-image files can be stored but not displayed on canvas</p>
+                  </div>
+                )
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
@@ -311,12 +321,21 @@ export default function TryOnPage() {
                     setSelectedItemId(item.id);
                   }}
                 >
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="w-full h-full object-contain pointer-events-none drop-shadow-lg"
-                    draggable={false}
-                  />
+                  {item.image_url.startsWith("data:image/") ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="w-full h-full object-contain pointer-events-none drop-shadow-lg"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-white/90 rounded-lg border border-gray-200 pointer-events-none">
+                      <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="mt-1 text-[10px] text-gray-500 text-center px-1 truncate max-w-full">{item.name}</p>
+                    </div>
+                  )}
 
                   {/* Controls - show when selected */}
                   {selectedItemId === item.id && (
@@ -467,11 +486,22 @@ export default function TryOnPage() {
                       className="group relative bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-black hover:shadow-md transition-all text-left"
                     >
                       <div className="aspect-square bg-gray-100 overflow-hidden">
-                        <img
-                          src={item.image_url}
-                          alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
+                        {item.image_url.startsWith("data:image/") ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 p-2">
+                            <svg className="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p className="mt-1 text-[10px] text-gray-400 text-center truncate max-w-full w-full">
+                              {item.image_url.startsWith("data:application/pdf") ? "PDF" : "File"}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <div className="p-2">
                         <p className="text-xs font-medium truncate">{item.name}</p>
